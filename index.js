@@ -76,6 +76,26 @@ app.post("/cadastrar", async (request, response) => {
     }
 });
 
+app.get("/musica/:id", async (request, response) => {
+    const { id } = request.params;
+    if (!validarId(id)) {
+        return response.status(400).json({ mensagem: "ID inválido." });
+    }
+
+    try {
+        const [musicas] = await sql.execute(
+            `SELECT * FROM \`${tabelaMusicas}\` WHERE id = ?`,
+            [id],
+        );
+        if (musicas.length === 0) {
+            return response.status(404).json({ mensagem: "Música não encontrada." });
+        }
+        response.json(musicas[0]);
+    } catch (error) {
+        responderErro(response, error);
+    }
+});
+
 app.delete("/apagar/:id", async (request, response) => {
     const { id } = request.params;
     if (!validarId(id)) {
@@ -91,6 +111,38 @@ app.delete("/apagar/:id", async (request, response) => {
             return response.status(404).json({ mensagem: "Música não encontrada." });
         }
         response.json({ mensagem: "Música apagada com sucesso!" });
+    } catch (error) {
+        responderErro(response, error);
+    }
+});
+
+app.put("/editar/:id", async (request, response) => {
+    const { id } = request.params;
+    const { titulo, artista, genero, ano, duracao } = request.body;
+    if (!validarId(id)) {
+        return response.status(400).json({ mensagem: "ID inválido." });
+    }
+    if (!validarMusica(request.body)) {
+        return response.status(400).json({ mensagem: "Preencha os campos corretamente." });
+    }
+
+    try {
+        const [resultado] = await sql.execute(
+            `UPDATE \`${tabelaMusicas}\`
+             SET titulo = ?, artista = ?, genero = ?, ano = ?, duracao = ?
+             WHERE id = ?`,
+            [titulo.trim(), artista.trim(), genero.trim(), Number(ano), Number(duracao), id],
+        );
+        if (resultado.affectedRows === 0) {
+            const [musicas] = await sql.execute(
+                `SELECT id FROM \`${tabelaMusicas}\` WHERE id = ?`,
+                [id],
+            );
+            if (musicas.length === 0) {
+                return response.status(404).json({ mensagem: "Música não encontrada." });
+            }
+        }
+        response.json({ mensagem: "Música alterada com sucesso!" });
     } catch (error) {
         responderErro(response, error);
     }
