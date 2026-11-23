@@ -19,6 +19,25 @@ const sql = mysql.createPool({
     connectionLimit: 10,
 });
 
+function validarMusica(musica) {
+    if (!musica || typeof musica !== "object") {
+        return false;
+    }
+
+    const camposTexto = ["titulo", "artista", "genero"];
+    const textosValidos = camposTexto.every(
+        (campo) => typeof musica[campo] === "string" && musica[campo].trim() !== "",
+    );
+
+    return (
+        textosValidos &&
+        Number.isInteger(Number(musica.ano)) &&
+        Number(musica.ano) > 0 &&
+        Number.isInteger(Number(musica.duracao)) &&
+        Number(musica.duracao) > 0
+    );
+}
+
 function responderErro(response, error) {
     console.error(error);
     response.status(500).json({ mensagem: "Erro ao acessar o banco de dados." });
@@ -30,6 +49,24 @@ app.get("/", async (_request, response) => {
             `SELECT * FROM \`${tabelaMusicas}\` ORDER BY id`,
         );
         response.json(musicas);
+    } catch (error) {
+        responderErro(response, error);
+    }
+});
+
+app.post("/cadastrar", async (request, response) => {
+    const { titulo, artista, genero, ano, duracao } = request.body;
+    if (!validarMusica(request.body)) {
+        return response.status(400).json({ mensagem: "Preencha os campos corretamente." });
+    }
+
+    try {
+        await sql.execute(
+            `INSERT INTO \`${tabelaMusicas}\` (titulo, artista, genero, ano, duracao)
+             VALUES (?, ?, ?, ?, ?)`,
+            [titulo.trim(), artista.trim(), genero.trim(), Number(ano), Number(duracao)],
+        );
+        response.status(201).json({ mensagem: "Música cadastrada com sucesso!" });
     } catch (error) {
         responderErro(response, error);
     }
