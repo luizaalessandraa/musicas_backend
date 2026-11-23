@@ -19,6 +19,10 @@ const sql = mysql.createPool({
     connectionLimit: 10,
 });
 
+function validarId(id) {
+    return /^\d+$/.test(id) && Number(id) > 0;
+}
+
 function validarMusica(musica) {
     if (!musica || typeof musica !== "object") {
         return false;
@@ -67,6 +71,26 @@ app.post("/cadastrar", async (request, response) => {
             [titulo.trim(), artista.trim(), genero.trim(), Number(ano), Number(duracao)],
         );
         response.status(201).json({ mensagem: "Música cadastrada com sucesso!" });
+    } catch (error) {
+        responderErro(response, error);
+    }
+});
+
+app.delete("/apagar/:id", async (request, response) => {
+    const { id } = request.params;
+    if (!validarId(id)) {
+        return response.status(400).json({ mensagem: "ID inválido." });
+    }
+
+    try {
+        const [resultado] = await sql.execute(
+            `DELETE FROM \`${tabelaMusicas}\` WHERE id = ?`,
+            [id],
+        );
+        if (resultado.affectedRows === 0) {
+            return response.status(404).json({ mensagem: "Música não encontrada." });
+        }
+        response.json({ mensagem: "Música apagada com sucesso!" });
     } catch (error) {
         responderErro(response, error);
     }
